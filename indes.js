@@ -10,8 +10,8 @@ const bot = new Discord.Client();
 const ownerID = config.ownerID;
 
 //define default variables
-const playersDefault = { 
-    "master": "", "users": [] 
+const playersDefault = {
+    "master": "", "users": []
 };
 const groundCardsDefault = {
     "card1": null,
@@ -25,62 +25,62 @@ const cardsDefault = {
     "2_of_hearts": 0,
     "2_of_spades": 0,
     "2_of_clubs": 0,
-        
+
     "3_of_diamonds": 0,
     "3_of_hearts": 0,
     "3_of_spades": 0,
     "3_of_clubs": 0,
-    
+
     "4_of_diamonds": 0,
     "4_of_hearts": 0,
     "4_of_spades": 0,
     "4_of_clubs": 0,
-    
+
     "5_of_diamonds": 0,
     "5_of_hearts": 0,
     "5_of_spades": 0,
     "5_of_clubs": 0,
-       
+
     "6_of_diamonds": 0,
     "6_of_hearts": 0,
     "6_of_spades": 0,
     "6_of_clubs": 0,
-        
+
     "7_of_diamonds": 0,
     "7_of_hearts": 0,
     "7_of_spades": 0,
     "7_of_clubs": 0,
-        
+
     "8_of_diamonds": 0,
     "8_of_hearts": 0,
     "8_of_spades": 0,
     "8_of_clubs": 0,
-        
+
     "9_of_diamonds": 0,
     "9_of_hearts": 0,
     "9_of_spades": 0,
     "9_of_clubs": 0,
-        
+
     "10_of_diamonds": 0,
     "10_of_hearts": 0,
     "10_of_spades": 0,
     "10_of_clubs": 0,
-        
+
     "jack_of_diamonds": 0,
     "jack_of_hearts": 0,
     "jack_of_spades": 0,
     "jack_of_clubs": 0,
-        
+
     "queen_of_diamonds": 0,
     "queen_of_hearts": 0,
     "queen_of_spades": 0,
     "queen_of_clubs": 0,
-       
+
     "king_of_diamonds": 0,
     "king_of_hearts": 0,
     "king_of_spades": 0,
     "king_of_clubs": 0,
-     
+
     "ace_of_diamonds": 0,
     "ace_of_hearts": 0,
     "ace_of_spades": 0,
@@ -99,7 +99,7 @@ bot.login(token.myToken);
 
 bot.on("ready", () => {
     bot.user.setGame("Poker!");
-    var deleteAllCards = false;    
+    var deleteAllCards = false;
     cards = cardsDefault;
     log("bot loaded!");
 });
@@ -113,29 +113,34 @@ bot.on("message", msg => {
         msg.delete(config.deleteTime); return;
     }
     msg.delete();
-    var cmd = msg.content.toString;
+    var cmd = msg.content;
 
     log(msg.author.username + ": " + msg.content);
-    return;
 
-// +-------------- ----+
-// |     COMMANDS      |
-// +-------------------+
+    // +-------------- ----+
+    // |     COMMANDS      |
+    // +-------------------+
 
-//start the game
-if(cmd.includes("start")) {                                                                                  
-    if (round == 0) {
-        gameStart(msg); 
+    //start the game
+    if(cmd == "start") {
+        log("kp warum");
+        if (round == 0) {
+            gameStart(msg);
+            return;
+        }
+        newEmbed("Bereits laufende Runde", "", msg);
         return;
     }
-    newEmbed("Bereits laufende Runde", "", msg);
-    return;
-}
 
-//remove all recent messages
-if (cmd.includes("clear")) {
-    msg.channel.bulkDelete(100);
-}
+    //remove all recent messages
+    if (cmd == "clear") {
+        if(msg.author.id == ownerID){
+          msg.channel.bulkDelete(100);
+        }
+        return;
+    }
+
+    return;
 
 });
 
@@ -157,7 +162,7 @@ function flop(msg){
 
     card = getCheckedRandomCard();
     groundCards.card3 = card;
-    msg.channel.sendFile(getCardFile(card));    
+    msg.channel.sendFile(getCardFile(card));
 }
 
 //show the trun
@@ -184,7 +189,7 @@ function getRandomCard() {
     else if(value == "13"){cardValue = "king"}
     else if(value == "14"){cardValue = "ace"}
     else {cardValue = value;}
-    
+
     if(color == "1"){cardColor = "diamonds"}
     else if(color == "2"){cardColor = "hearts"}
     else if(color == "3"){cardColor = "spades"}
@@ -237,12 +242,12 @@ function join(msg){
     }
     newEmbed(":spades: " + msg.author.username, "ist beigetreten", msg);
     players['users'].push({
-        "username": msg.author.username, 
-        "id": msg.author.id, 
-        "cash": config.startCash, 
-        "state": "join", 
-        "call": 0 , 
-        "card1":"", 
+        "username": msg.author.username,
+        "id": msg.author.id,
+        "cash": config.startCash,
+        "state": "join",
+        "call": 0 ,
+        "card1":"",
         "card2":""});
     return;
 }
