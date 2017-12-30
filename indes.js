@@ -1,7 +1,7 @@
 //import files and classes
 const Discord = require('discord.js');
 const config = require("./data/config.json");
-const token = require("./data/token.json");
+const token = require("C:/Users/robin/OneDrive/Dokumente/GitHub/token.json");
 
 //creation instance
 const bot = new Discord.Client();
@@ -10,9 +10,6 @@ const bot = new Discord.Client();
 const ownerID = config.ownerID;
 
 //define default variables
-const playersDefault = {
-    "master": "", "users": []
-};
 const groundCardsDefault = {
     "card1": null,
     "card2": null,
@@ -88,65 +85,149 @@ const cardsDefault = {
 };
 
 //set public variables
-var players;
-var cards;
-var groundCards;
-var currentPlayer;
 var round = -1;
+var dealCards = false;
 
 //login with token
 bot.login(token.myToken);
 
 bot.on("ready", () => {
     bot.user.setGame("Poker!");
-    var deleteAllCards = false;
-    cards = cardsDefault;
-    log("bot loaded!");
+    log("Bot loaded!");
 });
 
+function initMessage(msg){
+  if(msg.channel.id != config.channelID) {
+    return false;
+  }    //check if right channel
+  if(msg.author.bot){                                 //check if not him self
+      if(msg.embeds[0].title.includes(":spades:")){   //check if message is tagged
+          return false;
+      }
+      msg.delete(config.deleteTime);
+      return false;
+  }
+  msg.delete();
+  log(msg.author.username + "("+msg.author.id+"): " + msg.content);
+  return true;
+}
+
 bot.on("message", msg => {
-    if(msg.channel.id != config.channelID) {return;}
-    if(msg.author.bot){
-        if(msg.embeds[0].title.includes(":spades:")){
-            return;
-        }
-        msg.delete(config.deleteTime); return;
-    }
-    msg.delete();
-    var cmd = msg.content;
+    if(initMessage(msg) == false){return;}
 
-    log(msg.author.username + ": " + msg.content);
-
-    // +-------------- ----+
+    // +-------------------+
     // |     COMMANDS      |
     // +-------------------+
 
-    //start the game
-    if(cmd == "start") {
-        log("kp warum");
-        if (round == 0) {
-            gameStart(msg);
+    //info of game
+    if(msg.content == "info") {
+        console.log("isOwner: "+ (msg.author.id != ownerID));
+        console.log("round: "+ round);
+        console.log("players: "+ players['users'].length);
+        console.log("players: ");
+        console.log(players['users']);
+        console.log("players: ");
+        console.log(players);
+    }
+
+    //create the game
+    if(msg.content == "create") {
+        if (msg.author.id != ownerID){
+          accessDenied(msg);
+          return;
+        }
+        if (round == -1) {
+            startGame(msg);
             return;
         }
-        newEmbed("Bereits laufende Runde", "", msg);
+        setupEmbed("Es läuft bereits ein Spiel!")
+        return;
+    }
+
+    //start the game
+    if(msg.content == "start") {
+        if (msg.author.id != ownerID){
+          accessDenied(msg);
+          return;
+        }
+        if (round > 0) {
+          setupEmbed("Es läuft bereits ein Spiel!");
+          return;
+        }
+        if (round == -1){
+          setupEmbed("Achtung", "Es läuft aktuell keine Runde!", msg);
+          return;
+        }
+        if(players['users'].length >= 2){
+            roundStart(msg);
+            return;
+        }
+        setupEmbed("Mindestens 2 Spieler", players['users'].length+"/2", msg);
+        return;
+    }
+
+    //stop the game
+    if(msg.content == "stop") {
+        if (msg.author.id != ownerID){
+          accessDenied(msg);
+          return;
+        }
+        if (round != -1) {
+            stopGame(msg);
+            return;
+        }
+        setupEmbed("Achtung", "Es läuft aktuell keine Runde!", msg);
+        return;
+    }
+
+    //start the game
+    if(msg.content == "join") {
+        if (round == 0) {
+            join(msg);
+            getCards(msg);
+        }
+        setupEmbed("Achtung", "Es läuft aktuell keine Runde!", msg);
         return;
     }
 
     //remove all recent messages
-    if (cmd == "clear") {
+    if (msg.content == "clear") {
+        if (msg.author.id != ownerID){
+          accessDenied(msg);
+          return;
+        }
         if(msg.author.id == ownerID){
           msg.channel.bulkDelete(100);
         }
         return;
     }
-
     return;
-
 });
 
 // +-------------------+
 // |     FUNCTIONS     |
 // +-------------------+
+
+function manageGame(msg){
+  players = players['users'].length;
+}
+
+function getCards(msg) {
+    card1 = getCheckedRandomCard();
+    card2 = getCheckedRandomCard();
+    msg.author.sendMessage("Deine Karten:");
+    msg.author.sendFile(getCardFile(card1));
+    msg.author.sendFile(getCardFile(card2));
+    for (var i = 0; i < (obj.users.length); i++) {
+        if (players['users'][i].id == msg.author.id) {
+            players['users'][i].card1 = card1;
+            players['users'][i].card2 = card2;
+            return;
+        }
+    }
+    return;
+}
+
 
 //----- CARD OPERATIONS -----
 
@@ -234,70 +315,117 @@ function getCardText(card){
 //----- PLAYER OPERATIONS -----
 
 function join(msg){
-    for (var i = 0; i < (players.users.length); i++) {
-        if (players.users[i].id == msg.author.id) {
-            newEmbed("Achtung", "Du bist beteits beigetreten", msg);
+    for (var i = 0; i < (players['users'].length); i++) {
+        if (players['users'][i].id == msg.author.id) {
+            setupEmbed("Achtung", "Du bist bereits beigetreten", msg);
             return;
         }
     }
-    newEmbed(":spades: " + msg.author.username, "ist beigetreten", msg);
-    players['users'].push({
-        "username": msg.author.username,
-        "id": msg.author.id,
-        "cash": config.startCash,
-        "state": "join",
-        "call": 0 ,
-        "card1":"",
-        "card2":""});
+    messageEmbed(":spades: " + msg.author.username, "ist beigetreten", msg);
+    players['users'].push({"username": msg.author.username,"id": msg.author.id,"cash": config.startAmount,"state": "join","call": 0 ,"card1":"","card2":""});
     return;
 }
 
 function check(msg){
     if(round == -1){
-        newEmbed("Keine laufende Runde", "", msg);
+        setupEmbed("Keine laufende Runde", "", msg);
         return false;
     }
-    if (players.users[currentPlayer].username != msg.author.username) {
-        newEmbed(players.users[currentPlayer].username, "Ist an der Reihe", msg);
+    if (players['users'][currentPlayer].username != msg.author.username) {
+        messageEmbed(players['users'][currentPlayer].username, "ist an der Reihe", msg);
         return false;
     }
     return true;
 }
 
+//check is player is in game
+function isInGame(msg){
+  for (var i = 0; i < (players['users'].length); i++) {
+      if (players['users'][i].id == msg.author.id) {
+          return false;
+      }
+  }
+  return true;
+}
+
 //----- SETUP OPERATIONS -----
 
 //start the round
-function roundStart(){
-    round = 0;
-    cards = cardsDefault;
-    players = playersDefault;
+function roundStart(msg){
+    round++;
     groundCards = groundCardsDefault;
+    cards = cardsDefault;
+    getCards(msg);
+    dealCards = true;
 }
 
 //stop the round
 function roundEnd(){
-    var deleteAllCards = true;
-    var round = -1;
+    dealCards = false;
+    round++;
 }
 
 //start a new game
 function startGame(msg){
-    roundStart();
-    newEmbed(":spades: Runde gestartet", "von " + msg.author.username, msg);
-    players['users'].push({"username": msg.author.username, "id": msg.author.id, "cash": config.startCash, "state": "dealer", "call": 0, "card1": "", "card2": ""});
+    players = {
+      "users": []
+    };
+    while(!isInGame(msg)){
+      players = {
+        "users": []
+      };
+      delete players['users'];
+      players = {
+        "users": []
+      };
+    }
+    msg.channel.bulkDelete(100);
+    messageEmbed(":spades: Spiel gestartet", "von " + msg.author.username, msg);
+    players['users'].push({"username": msg.author.username, "id": msg.author.id, "cash": config.startAmount, "state": "dealer", "call": 0, "card1": "", "card2": ""});
+    round = 0;
     currentPlayer = 0;
-    players.master = msg.author.id;
+    return;
+}
+
+//stop the game
+function stopGame(msg){
+    log("Stop Game!");
+    setupEmbed("Runde gestoppt", "von " + msg.author.username, msg);
+    players = {};
+    cards = {};
+    groundCards = {};
+    currentPlayer = 0;
+    round = -1;
     return;
 }
 
 //----- MESSAGE OPERATIONS -----
 
+
 //message service
-function newEmbed(t, d, msg) {
+function messageEmbed(t, d, msg) {
+    var embedPoker = new Discord.RichEmbed();
+    embedPoker.setTitle(t);
+    embedPoker.setDescription(d);
+    embedPoker.setColor("#55FF55");
+    msg.channel.sendEmbed(embedPoker);
+}
+
+//message service
+function setupEmbed(t, d, msg) {
     var embedPoker = new Discord.RichEmbed();
     embedPoker.setTitle(t);
     embedPoker.setDescription(d);
     embedPoker.setColor("#FFB700");
+    msg.channel.sendEmbed(embedPoker);
+}
+
+//message service
+function accessDenied(msg) {
+    var embedPoker = new Discord.RichEmbed();
+    embedPoker.setTitle("Verweigert!");
+    embedPoker.setDescription(msg.author.username + ", du hast keine Rechte dafür.");
+    embedPoker.setColor("#FF0000");
     msg.channel.sendEmbed(embedPoker);
 }
 
