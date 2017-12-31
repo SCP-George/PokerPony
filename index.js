@@ -92,7 +92,7 @@ const gameInfos = {
     "currentPlayer": 0,
     "subRound": false
 }
-
+// @TODO lang-datei (für alle stings) string => key       "k1": "sdfasd"
 /*
 round:
 -1 = wait for create
@@ -109,7 +109,7 @@ bot.login(token.myToken);
 
 bot.on("ready", () => {
     bot.user.setGame("Poker!");
-    log("");
+    console.log("");
     log("Bot loaded!");
 });
 
@@ -121,6 +121,7 @@ bot.on("message", msg => {
     // |     COMMANDS      |
     // +-------------------+
 
+    // @TODO repace switch/case with functions[] 
     switch (cmd) {
         case "info":
             console.log("isOwner: " + (msg.author.id != ownerID));
@@ -138,7 +139,7 @@ bot.on("message", msg => {
                 createGame(msg);
                 return;
             }
-            setupEmbed("Es läuft bereits ein Spiel!");
+            setupEmbed("Es läuft bereits ein Spiel!", "", msg);
             break;
         case "start":
             if (msg.author.id != ownerID) {
@@ -146,7 +147,7 @@ bot.on("message", msg => {
                 return;
             }
             if (gameInfos.round > 0) {
-                setupEmbed("Es läuft bereits ein Spiel!");
+                setupEmbed("Es läuft bereits ein Spiel!", "", msg);
                 return;
             }
             if (gameInfos.round == -1) {
@@ -247,15 +248,16 @@ function checkGame(msg) {
     return gameInfos.currentPlayer >= (obj.users.length - 1);
 }
 
-
 function manageGame(msg) {
     const playersCount = players.length;
     if (!players.some((player, index) => {
         return (player.call !== gameInfos.call);
     }
     )) {
-        startRound(msg);
-        roundFunctions[gameInfos.round-2](msg);
+        log("start Next Round");
+        nextRound(msg);
+        log("deal cards");
+        roundFunctions[gameInfos.round - 2](msg);
         return;
     }
 
@@ -421,7 +423,7 @@ function initMessage(msg) {
         return false;
     }    //check if right channel
     if (msg.author.bot) {                                 //check if not him self
-        if (msg.embeds[0].title.includes(":spades:")) {   //check if message is tagged
+        if (!msg.embeds[0].title || msg.embeds[0].title.includes(":spades:")) {   //check if message is tagged
             return false;
         }
         msg.delete(config.deleteTime);
@@ -444,9 +446,11 @@ function startRound(msg) {
     messageEmbed(players[gameInfos.currentPlayer].username, "Ist an der Reihe", msg);
 }
 
-function nextRound(msg){
+function nextRound(msg) {
     gameInfos.round++;
-    cards = cardsDefault;
+    gameInfos.currentPlayer = 0;
+    gameInfos.call = 0;
+    players.forEach(player => player.call = 0);
     bot.user.setGame(players[gameInfos.currentPlayer].username + " ist dran!");
     messageEmbed(players[gameInfos.currentPlayer].username, "Ist an der Reihe", msg);
 }
@@ -480,6 +484,8 @@ function stopGame(msg) {
 //#endregion
 //#region ----- MESSAGE OPERATIONS -----
 
+
+//@TODO message service in one function
 
 //message service
 function messageEmbed(t, d, msg) {
