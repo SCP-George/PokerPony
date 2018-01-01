@@ -37,7 +37,7 @@ const Discord = require('discord.js'),
                 setup: {
                     color: '#FFB700',
                     texts: {
-                        no_money:{
+                        no_money: {
                             title: 'Achtung',
                             description: 'Du hast nicht genügend Geld ({{money}})'
                         },
