@@ -41,6 +41,14 @@ const Discord = require('discord.js'),
                             title: 'Achtung',
                             description: 'Du hast nicht genügend Geld ({{money}})'
                         },
+                        not_you_turn: { //just pre-defined but not in use.
+                            title: '',
+                            description: ''
+                        },
+                        call_not_null: {
+                            title: 'Achtung',
+                            description : 'Du kannst nur checken wenn noch nichts gecallt wurde.'
+                        },
                         to_less_raise: {
                             title: 'Achtung',
                             description: 'Erhöre mindestens um {{money}}'
@@ -135,14 +143,14 @@ bot.on('message', msg => {
 
 const methods = {
     info(msg) { },
-    debug(msg) {
+    debug(msg) { //debug for console
         console.log('isOwner: ', msg.author.id);
         console.log('players:');
         console.log(players);
         console.log('gameInfos:');
         console.log(gameInfos);
     },
-    create(msg, args) {
+    create(msg, args) { //create game
         if (matches.find(channel => channel.id == msg.channel.id))
             return sendMessage(msg, 'setup', 'not_created', msg.author.username);
 
@@ -162,11 +170,10 @@ const methods = {
 
         return sendMessage(msg, 'info', 'created', msg.author.username);
     },
-    start(msg) {
-        let match = matches.find(channel => channel.id == msg.channel
-            .id);
+    start(msg) { // start game
+            //@TODO was ist das
+        let match = matches.find(channel => channel.id == msg.channel.id);
 
-        //@TODO was ist das
         if (!match || match.owner != msg.author.id) return sendMessage(msg, 'setup',
             'not_created');
 
@@ -186,13 +193,11 @@ const methods = {
             card => msg.author.sendFile(getCardFile(
                 card))));
 
-        //@TODO
-        sendMessage(msg, 'info', 'his_turn');
+        return sendMessage(msg, 'info', 'his_turn', /*@TODO need playername here*/);
 
     },
     stop(msg) {
-        let match = matches.find(channel => channel.id == msg.channel
-            .id);
+        let match = matches.find(channel => channel.id == msg.channel.id);
         if (!match || match.owner != msg.author.id) return;
         matches.splice(matches.indexOf(match), 1);
     },
@@ -208,22 +213,20 @@ const methods = {
             cards: []
         });
     },
-    call(msg, args) {
-
-        let match = matches.find(channel => channel.id == msg.channel
-            .id);
-        call = args[0];
+    raise(msg, args) {
+        let match = matches.find(channel => channel.id == msg.channel.id);
         if (!match) return sendMessage(msg, 'setup', 'not_started');
-        if (match.currentPlayer !== msg.author.id) return;
+        if (match.currentPlayer !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn');
         const currentPlayer = match.players.indexOf(match.players
             .find(
             player => player.id === match.currentPlayer
             ));
-        const call = parseInt(args[0]) || match.call;
-        if (!call) return; //@TODO replace call with raise
-        if (currentPlayer.cash < call) return sendMessage(msg, 'setup', 'no_money', currentPlayer.cash);
-        if (call < match.call) return sendMessage(msg, 'setup', 'to_less_raise', match.call);
-        match.call = call;
+        //@TODO "||" = oder falls 1. nicht geht?
+        const raise = parseInt(args[0]) || match.call;
+        if (!raise) return; //@TODO replace call with raise
+        if (currentPlayer.cash < raise) return sendMessage(msg, 'setup', 'no_money', currentPlayer.cash);
+        if (raise < match.call) return sendMessage(msg, 'setup', 'to_less_raise', match.call);
+        match.call = raise;
 
         match.pot += match.subRound ? match.call -
             currentPlayer.call :
@@ -233,6 +236,8 @@ const methods = {
 
         player.call = match.call;
         //TODO gameInfos???
+
+        //@TODO ich würde das raus packen
         if (!players.some(player => player.call !== gameInfos.call)) {
             match.round++;
             match.currentPlayer = 0;
@@ -271,22 +276,14 @@ const methods = {
             }
         }
     },
-    /*
-    check(msg) {
-        let match = matches.find(channel => channel.id == msg.channel
-            .id);
-        if (!match) return;
-        if (match.currentPlayer !== msg.author.id) return;
+    call(msg){
+        let match = matches.find(channel => channel.id == msg.channel.id);
+        if (!match) return sendMessage(msg, 'setup', 'not_started');
+        if (match.currentPlayer !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn');
         const currentPlayer = match.players.indexOf(match.players
-            .find(
-            player => player.id === match.currentPlayer
-            ));
-        const call = parseInt(args[0]) || match.call;
-        if (!call) return;
-        if (currentPlayer.cash < call) return;
-        if (call < match.call) return;
-
-        match.call = call;
+            .find(player => player.id === match.currentPlayer));
+        //@TODO "||" = oder falls 1. nicht geht?
+        if (currentPlayer.cash < match.call) return sendMessage(msg, 'setup', 'no_money', currentPlayer.cash);
 
         match.pot += match.subRound ? match.call -
             currentPlayer.call :
@@ -295,6 +292,59 @@ const methods = {
         player.cash += player.call - match.call;
 
         player.call = match.call;
+        //TODO gameInfos???
+
+        //@TODO ich würde das raus packen
+        if (!players.some(player => player.call !== gameInfos.call)) {
+            match.round++;
+            match.currentPlayer = 0;
+            match.call = 0;
+
+            match.players.forEach(player => player.call = 0);
+
+
+            bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
+
+            for (let i = 0; i < (match.round === 2 ? 3 : 1); i++) {
+                const card = getCheckedRandomCard();
+
+                match.cards.push(card);
+
+                msg.channel.sendFile(getCardFile(card));
+            }
+
+            return sendMessage(msg, 'info', 'his_turn');
+        }
+
+        match.currentPlayer++;
+        for (; match.currentPlayer < match.players.length &&
+            match.players[
+                match.currentPlayer].state === 'out'; match.currentPlayer++
+        ) {
+            if (match.players[match.currentPlayer].call ===
+                match.call) {
+                bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
+                return sendMessage(msg, 'info', 'his_turn');
+            }
+
+            if (match.currentPlayer >= match.players.length) {
+                match.currentPlayer = 0;
+                match.subRound = true;
+            }
+        }
+    },
+    check(msg) {
+        let match = matches.find(channel => channel.id == msg.channel
+            .id);
+        if (!match) return sendMessage(msg, 'setup', 'not_started');
+        if (match.currentPlayer !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn');
+        const currentPlayer = match.players.indexOf(match.players
+            .find(
+            player => player.id === match.currentPlayer
+        ));
+        if (match.call !== 0) return sendMessage(msg, 'setup', 'call_not_null');
+        match.call = 0;
+        player.call = 0;
 
         if (!players.some(player => player.call !== gameInfos.call)) {
             match.round++;
@@ -336,7 +386,6 @@ const methods = {
             }
         }
     },
-    */
     clear(msg) {
         let match = matches.find(channel => channel.id == msg.channel
             .id);
@@ -396,6 +445,7 @@ function sendMessage(msg, type, tag, data) {
     const color = i18n.messages[type].color;
     const text = i18n.messages[type].texts[tag];
     const title = text.title.replace(/{{.*}}/, data ? data : '');
+    if (title === '') return;
     const description = text.description.replace(/{{.*}}/, data ? data : '');
     embed.setTitle(title);
     embed.setDescription(description);
