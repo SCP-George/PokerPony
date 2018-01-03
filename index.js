@@ -2,92 +2,7 @@
 const Discord = require('discord.js'),
     config = require('./data/config.json'),
     token = require('C:/Users/robin/OneDrive/Dokumente/GitHub/token.json'),
-    i18n = {
-        games: {
-            start_game: 'Poker!',
-            his_turn: '{{username}} ist dran!'
-        },
-        messages: {
-            info: {
-                color: '#55FF55',
-                texts: {
-                    help: {
-                        title: 'Befehle ',
-                        description: 'join | Runde beitreten \n' +
-                            'ready | Karten nehmen \n' +
-                            'call | Mitgehen \n' +
-                            'raise <wert> | Erhöhen \n' +
-                            'check | Passen (0 Runde) \n' +
-                            'info | Info\'s halt..\nfold | Aussteigen \n' +
-                            'all -in | HALLT ALLES'
-                    },
-                    created: {
-                        title: 'Spiel von {{username}} erstellt',
-                        description: 'tritt mit \'join\' bei!'
-                    },
-                    his_turn: {
-                        title: '{{username}} ist dran!',
-                        description: ''
-                    },
-                    chat_clear: {
-                        title: 'Der Chat wurde geleert',
-                        description: 'Endlich mal platz hier!'
-                    }
-                },
-                setup: {
-                    color: '#FFB700',
-                    texts: {
-                        no_money: {
-                            title: 'Achtung',
-                            description: 'Du hast nicht genügend Geld ({{money}})'
-                        },
-                        not_you_turn: { //just pre-defined but not in use.
-                            title: '',
-                            description: ''
-                        },
-                        call_not_null: {
-                            title: 'Achtung',
-                            description : 'Du kannst nur checken wenn noch nichts gecallt wurde.'
-                        },
-                        to_less_raise: {
-                            title: 'Achtung',
-                            description: 'Erhöre mindestens um {{money}}'
-                        },
-                        not_created: {
-                            title: 'Achtung',
-                            description: 'Es ist noch kein Spiel erstellt!'
-                        },
-                        not_started: {
-                            title: 'Achtung',
-                            description: 'Es ist noch kein Spiel gestartet!'
-                        },
-                        already_created: {
-                            title: 'Achtung',
-                            description: 'Es wurde bereits ein Spiel erstellt.'
-                        },
-                        already_started: {
-                            title: 'Achtung',
-                            description: 'Es läuft bereits ein Spiel.'
-                        },
-                        missing_players: {
-                            title: 'Nicht genügent Spieler',
-                            description: 'mindestens 2 Spieler werden gebraucht!'
-                        }
-                    },
-                },
-                error: {
-                    color: '#FF0000',
-                    texts: {
-                        denied: {
-                            title: 'Verweigert',
-                            description: '{{username}} du hast keine Rechte dafür.'
-                        }
-                    }
-                }
-            }
-        }
-    };
-
+    i18n = require('./data/i18n.json');
 //creation instance
 const bot = new Discord.Client();
 
@@ -171,11 +86,11 @@ const methods = {
         return sendMessage(msg, 'info', 'created', msg.author.username);
     },
     start(msg) { // start game
-            //@TODO was ist das
         let match = matches.find(channel => channel.id == msg.channel.id);
 
-        if (!match || match.owner != msg.author.id) return sendMessage(msg, 'setup',
-            'not_created');
+        if (!match) return sendMessage(msg, 'setup', 'not_created');
+
+        if(match.owner != msg.author.id) return sendMessage(msg, 'error', 'denied');
 
         if (!match.round) return sendMessage(msg, 'setup',
             'already_started');
@@ -193,7 +108,7 @@ const methods = {
             card => msg.author.sendFile(getCardFile(
                 card))));
 
-        return sendMessage(msg, 'info', 'his_turn', /*@TODO need playername here*/);
+        return sendMessage(msg, 'info', 'his_turn', match.players[match.currentPlayer].obj.username);
 
     },
     stop(msg) {
@@ -220,10 +135,13 @@ const methods = {
         const currentPlayer = match.players.indexOf(match.players
             .find(
             player => player.id === match.currentPlayer
-            ));
-        //@TODO "||" = oder falls 1. nicht geht?
-        const raise = parseInt(args[0]) || match.call;
-        if (!raise) return; //@TODO replace call with raise
+          ));
+
+        const raise = parseInt(args[0]);
+
+        if(!raiseValue) return sendMessage(msg, 'setup', 'no_arg'); //@TODO setup ing lang file
+
+        if (!raise) return;
         if (currentPlayer.cash < raise) return sendMessage(msg, 'setup', 'no_money', currentPlayer.cash);
         if (raise < match.call) return sendMessage(msg, 'setup', 'to_less_raise', match.call);
         match.call = raise;
@@ -235,46 +153,8 @@ const methods = {
         player.cash += player.call - match.call;
 
         player.call = match.call;
-        //TODO gameInfos???
 
-        //@TODO ich würde das raus packen
-        if (!players.some(player => player.call !== gameInfos.call)) {
-            match.round++;
-            match.currentPlayer = 0;
-            match.call = 0;
-
-            match.players.forEach(player => player.call = 0);
-
-
-            bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
-
-            for (let i = 0; i < (match.round === 2 ? 3 : 1); i++) {
-                const card = getCheckedRandomCard();
-
-                match.cards.push(card);
-
-                msg.channel.sendFile(getCardFile(card));
-            }
-
-            return sendMessage(msg, 'info', 'his_turn');
-        }
-
-        match.currentPlayer++;
-        for (; match.currentPlayer < match.players.length &&
-            match.players[
-                match.currentPlayer].state === 'out'; match.currentPlayer++
-        ) {
-            if (match.players[match.currentPlayer].call ===
-                match.call) {
-                bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
-                return sendMessage(msg, 'info', 'his_turn');
-            }
-
-            if (match.currentPlayer >= match.players.length) {
-                match.currentPlayer = 0;
-                match.subRound = true;
-            }
-        }
+        nextRound(match)
     },
     call(msg){
         let match = matches.find(channel => channel.id == msg.channel.id);
@@ -282,7 +162,6 @@ const methods = {
         if (match.currentPlayer !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn');
         const currentPlayer = match.players.indexOf(match.players
             .find(player => player.id === match.currentPlayer));
-        //@TODO "||" = oder falls 1. nicht geht?
         if (currentPlayer.cash < match.call) return sendMessage(msg, 'setup', 'no_money', currentPlayer.cash);
 
         match.pot += match.subRound ? match.call -
@@ -292,46 +171,8 @@ const methods = {
         player.cash += player.call - match.call;
 
         player.call = match.call;
-        //TODO gameInfos???
 
-        //@TODO ich würde das raus packen
-        if (!players.some(player => player.call !== gameInfos.call)) {
-            match.round++;
-            match.currentPlayer = 0;
-            match.call = 0;
-
-            match.players.forEach(player => player.call = 0);
-
-
-            bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
-
-            for (let i = 0; i < (match.round === 2 ? 3 : 1); i++) {
-                const card = getCheckedRandomCard();
-
-                match.cards.push(card);
-
-                msg.channel.sendFile(getCardFile(card));
-            }
-
-            return sendMessage(msg, 'info', 'his_turn');
-        }
-
-        match.currentPlayer++;
-        for (; match.currentPlayer < match.players.length &&
-            match.players[
-                match.currentPlayer].state === 'out'; match.currentPlayer++
-        ) {
-            if (match.players[match.currentPlayer].call ===
-                match.call) {
-                bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
-                return sendMessage(msg, 'info', 'his_turn');
-            }
-
-            if (match.currentPlayer >= match.players.length) {
-                match.currentPlayer = 0;
-                match.subRound = true;
-            }
-        }
+        nextRound(match, msg);
     },
     check(msg) {
         let match = matches.find(channel => channel.id == msg.channel
@@ -346,45 +187,7 @@ const methods = {
         match.call = 0;
         player.call = 0;
 
-        if (!players.some(player => player.call !== gameInfos.call)) {
-            match.round++;
-            match.currentPlayer = 0;
-            match.call = 0;
-
-            match.players.forEach(player => player.call = 0);
-
-
-            bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer]
-                .obj.username));
-
-            for (let i = 0; i < (match.round === 2 ? 3 : 1); i++) {
-                const card = getCheckedRandomCard();
-
-                match.cards.push(card);
-
-                msg.channel.sendFile(getCardFile(card));
-            }
-
-            return;
-        }
-
-        match.currentPlayer++;
-        for (; match.currentPlayer < match.players.length &&
-            match.players[
-                match.currentPlayer].state === 'out'; match.currentPlayer++
-        ) {
-            if (match.players[match.currentPlayer].call ===
-                match.call) {
-                const user = match.players[match.currentPlayer].obj.username;
-                bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/,user));
-                return sendMessage(msg, 'info', 'his_turn', user);
-            }
-
-            if (match.currentPlayer >= match.players.length) {
-                match.currentPlayer = 0;
-                match.subRound = true;
-            }
-        }
+        nextRound(match, msg);
     },
     clear(msg) {
         let match = matches.find(channel => channel.id == msg.channel
@@ -395,6 +198,46 @@ const methods = {
 
     },
     help(msg) { sendMessage(msg, 'info', 'help'); }
+}
+
+function nextRound(match, msg){
+    if (!players.some(player => player.call !== match.call)) {
+        match.round++;
+        match.currentPlayer = 0;
+        match.call = 0;
+
+        match.players.forEach(player => player.call = 0);
+
+
+        bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
+
+        for (let i = 0; i < (match.round === 2 ? 3 : 1); i++) {
+            const card = getCheckedRandomCard();
+
+            match.cards.push(card);
+
+            msg.channel.sendFile(getCardFile(card));
+        }
+
+        return sendMessage(msg, 'info', 'his_turn');
+    }
+
+    match.currentPlayer++;
+    for (; match.currentPlayer < match.players.length &&
+        match.players[
+            match.currentPlayer].state === 'out'; match.currentPlayer++
+    ) {
+        if (match.players[match.currentPlayer].call ===
+            match.call) {
+            bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
+            return sendMessage(msg, 'info', 'his_turn');
+        }
+
+        if (match.currentPlayer >= match.players.length) {
+            match.currentPlayer = 0;
+            match.subRound = true;
+        }
+    }
 }
 
 function getCardName(card) {
