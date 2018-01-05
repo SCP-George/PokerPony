@@ -31,11 +31,11 @@ bot.on('message', msg => {
     // if (!(msg.content[0] === '/' && msg.channel.id === config.channelID))
     //     return;
     if (msg.author.bot) {
-      if((Array.isArray(msg.embeds) && msg.embeds.length && msg.embeds[0].title.includes(':spades:')) || msg.attachments.some(file => file.filename)) return;
+        if ((Array.isArray(msg.embeds) && msg.embeds.length && msg.embeds[0].title.includes(':spades:')) || msg.attachments.some(file => file.filename)) return;
 
-      //msg.delete(config.deleteTime);
+        //msg.delete(config.deleteTime);
 
-      return;
+        return;
     }
     msg.delete();
 
@@ -58,19 +58,19 @@ bot.on('message', msg => {
     cards: []
  */
 
- /** Match Object
-     id: msg.channel.id,
-     owner: msg.author.id,
-     cash: args[0] || config.startAmount,
-     pot: 0,
-     call: 0,
-     round: 0,
-     subRound: false,
-     currentPlayer: 0,
-     cards: [],
-     players: [],
-     messages: []
-  */
+/** Match Object
+    id: msg.channel.id,
+    owner: msg.author.id,
+    cash: args[0] || config.startAmount,
+    pot: 0,
+    call: 0,
+    round: 0,
+    subRound: false,
+    currentPlayer: 0,
+    cards: [],
+    players: [],
+    messages: []
+ */
 
 //after game is finished or stopped, all its messages (which IDs will be saved) will be deleted (using methods.clear)
 const methods = {
@@ -122,8 +122,8 @@ const methods = {
         match.round++;
 
         match.players.forEach(player => {
-          player.cards = [getCheckedRandomCard(match), getCheckedRandomCard(match)]
-          player.cards.forEach(card => player.obj.sendFile(getCardFile(card)));
+            player.cards = [getCheckedRandomCard(match), getCheckedRandomCard(match)]
+            player.cards.forEach(card => player.obj.sendFile(getCardFile(card)));
         });
 
         bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
@@ -140,7 +140,7 @@ const methods = {
             .id);
         if (!match) return sendMessage(msg, 'setup', 'not_created');
         if (match.round) return sendMessage(msg, 'setup', 'already_started');
-        if(match.players.find(player => player.obj.id === msg.author.id)) return sendMessage(msg, 'setup', 'already_joined')
+        if (match.players.find(player => player.obj.id === msg.author.id)) return sendMessage(msg, 'setup', 'already_joined')
         match.players.push({
             obj: msg.author,
             cash: match.cash,
@@ -159,11 +159,9 @@ const methods = {
 
         const raise = parseInt(args[0]);
 
-        if(!raise) return sendMessage(msg, 'setup', 'no_arg');
-
-        if (!raise) return;
+        if (!raise) return sendMessage(msg, 'setup', 'no_arg');
         if (currentPlayer.cash < raise) return sendMessage(msg, 'setup', 'no_money', currentPlayer.cash);
-        if (raise < match.call) return sendMessage(msg, 'setup', 'to_less_raise', match.call);
+        if (raise < match.call * 2) return sendMessage(msg, 'setup', 'to_less_raise', match.call * 2);
         match.call = raise;
 
         match.pot += match.subRound ? match.call -
@@ -175,8 +173,9 @@ const methods = {
         currentPlayer.call = match.call;
 
         nextRound(match, msg);
+        return sendMessage(msg, 'info', 'raise', currentPlayer.obj.username, null, match.call, match.pot);
     },
-    call(msg){
+    call(msg) {
         let match = matches.find(channel => channel.id == msg.channel.id);
         if (!match) return sendMessage(msg, 'setup', 'not_started');
         const currentPlayer = match.players[match.currentPlayer];
@@ -194,6 +193,7 @@ const methods = {
         currentPlayer.call = match.call;
 
         nextRound(match, msg);
+        return sendMessage(msg, 'info', 'call', currentPlayer.obj.username, null, match.call, match.pot);
     },
     check(msg) {
         let match = matches.find(channel => channel.id == msg.channel.id);
@@ -213,20 +213,18 @@ const methods = {
         currentPlayer.call = 0;
 
         nextRound(match, msg);
+        return sendMessage(msg, 'info', 'check', currentPlayer.obj.username, null, match.call, match.pot);
     },
     help(msg) { sendMessage(msg, 'info', 'help', {}, true); }
 }
 
-function nextRound(match, msg){
+function nextRound(match, msg) {
     if (!match.players.some(player => player.call !== match.call)) {
         match.round++;
         match.currentPlayer = 0;
         match.call = 0;
 
         match.players.forEach(player => player.call = 0);
-
-
-        bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
 
         for (let i = 0; i < (match.round === 2 ? 3 : 1); i++) {
             const card = getCheckedRandomCard(match);
@@ -240,16 +238,18 @@ function nextRound(match, msg){
     }
 
     match.currentPlayer++;
-    for (; match.currentPlayer < match.players.length && match.players[match.currentPlayer].state === 'out'; match.currentPlayer++) {
-        if (match.players[match.currentPlayer].call === match.call) {
+    log(match.currentPlayer);
+    if (match.currentPlayer >= match.players.length-1) {
+        match.currentPlayer = 0;
+        match.subRound = true;
+    }//@TODO Check error
+    for (; match.players[match.currentPlayer].state !== 'out'; match.currentPlayer++) {
+        log(match.currentPlayer);
+        if (match.players[match.currentPlayer].call !== match.call) {
             bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
             return sendMessage(msg, 'info', 'his_turn', match.players[match.currentPlayer].obj.username);
         }
-
-        if (match.currentPlayer >= match.players.length) {
-            match.currentPlayer = 0;
-            match.subRound = true;
-        }
+        log(match.currentPlayer);
     }
 }
 
@@ -275,8 +275,8 @@ function getCheckedRandomCard(match) {
             cards: Array.from(Array(13), (value, i) => i + 2).filter(item => !cardsOfType.includes(item))
         };
 
-        if(cardType.cards.length)
-          types.push(cardType);
+        if (cardType.cards.length)
+            types.push(cardType);
     });
 
     const type = types[Math.floor(Math.random() * types.length)];
@@ -293,20 +293,24 @@ function getCardFile(card) {
     return `./cards/${getCardName(card)}.png`;
 }
 
-function sendMessage(msg, type, tag, data, author) {
+function sendMessage(msg, type, tag, data, author, up, pot) {
     const embed = new Discord.RichEmbed();
 
     const color = i18n.messages[type].color;
     const text = i18n.messages[type].texts[tag];
+
+
     log(`bot(0): ${text.title}, ${text.description}`);
     const title = text.title.replace(/{{.*}}/, data || '');
     if (!title) return;
-    const description = text.description.replace(/{{.*}}/, data || '');
+    const description = up && pot ? text.description.replace('{{pot}}', pot || '')
+        .replace('{{up}}', up || '') : text.description.replace(/{{.*}}/, data || '');
+
+    log(title, description);
     embed.setTitle(title);
     embed.setDescription(description);
     embed.setColor(color);
-
-    msg[author ? 'author' : 'channel'].send(embed);
+    msg[author ? 'author' : 'channel'].sendEmbed(embed);
 }
 
 //log service

@@ -11,6 +11,22 @@
                     "title": "Befehle ",
                     "description": "join | Runde beitreten \n ready | Karten nehmen \n call | Mitgehen \n raise <wert> | Erhöhen \n check | Passen (0 Runde) \n info | Info\"s halt..\nfold | Aussteigen \n all -in | HALLT ALLES"
                 },
+                "raise": {
+                    "title": "Raise von {{username}}",
+                    "description": "+{{up}} ({{pot}})"
+                },
+                "call": {
+                    "title": "Call von {{username}}",
+                    "description": "+{{up}} ({{pot}})"
+                },
+                "check": {
+                    "title": "Check von {{username}}",
+                    "description": "+0 ({{pot}})"
+                },
+                "fold": {
+                    "title": "Fold von {{username}}",
+                    "description": " "
+                },
                 "created": {
                     "title": "Spiel von {{username}} erstellt",
                     "description": "tritt mit \"join\" bei!"
