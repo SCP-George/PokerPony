@@ -9,13 +9,7 @@
             "texts": {
                 "help": {
                     "title": "Befehle ",
-                    "description": "join | Runde beitreten \n" +
-                        "ready | Karten nehmen \n" +
-                        "call | Mitgehen \n" +
-                        "raise <wert> | Erhöhen \n" +
-                        "check | Passen (0 Runde) \n" +
-                        "info | Info\"s halt..\nfold | Aussteigen \n" +
-                        "all -in | HALLT ALLES"
+                    "description": "join | Runde beitreten \n ready | Karten nehmen \n call | Mitgehen \n raise <wert> | Erhöhen \n check | Passen (0 Runde) \n info | Info\"s halt..\nfold | Aussteigen \n all -in | HALLT ALLES"
                 },
                 "created": {
                     "title": "Spiel von {{username}} erstellt",
@@ -28,56 +22,72 @@
                 "chat_clear": {
                     "title": "Der Chat wurde geleert",
                     "description": "Endlich mal platz hier!"
-                }
-            },
-            "setup": {
-                "color": "#FFB700",
-                "texts": {
-                    "no_money": {
-                        "title": "Achtung",
-                        "description": "Du hast nicht genügend Geld ({{money}})"
-                    },
-                    "not_you_turn": {
-                        "title": "",
-                        "description": ""
-                    },
-                    "call_not_null": {
-                        "title": "Achtung",
-                        "description ": "Du kannst nur checken wenn noch nichts gecallt wurde."
-                    },
-                    "to_less_raise": {
-                        "title": "Achtung",
-                        "description": "Erhöre mindestens um {{money}}"
-                    },
-                    "not_created": {
-                        "title": "Achtung",
-                        "description": "Es ist noch kein Spiel erstellt!"
-                    },
-                    "not_started": {
-                        "title": "Achtung",
-                        "description": "Es ist noch kein Spiel gestartet!"
-                    },
-                    "already_created": {
-                        "title": "Achtung",
-                        "description": "Es wurde bereits ein Spiel erstellt."
-                    },
-                    "already_started": {
-                        "title": "Achtung",
-                        "description": "Es läuft bereits ein Spiel."
-                    },
-                    "missing_players": {
-                        "title": "Nicht genügent Spieler",
-                        "description": "mindestens 2 Spieler werden gebraucht!"
-                    }
                 },
-            },
-            "error": {
-                "color": "#FF0000",
-                "texts": {
-                    "denied": {
-                        "title": "Verweigert",
-                        "description": "{{username}} du hast keine Rechte dafür."
-                    }
+                "player_joined": {
+                    "title": "{{username}}",
+                    "description": "ist beigetreten"
+                }
+            }
+        },
+        "setup": {
+            "color": "#FFB700",
+            "texts": {
+                "no_arg": {
+                    "title": "Achtung",
+                    "description": "Du hast vergessen einen richtigen Wert anzugeben!"
+                },
+                "no_money": {
+                    "title": "Achtung",
+                    "description": "Du hast nicht genügend Geld ({{money}})"
+                },
+                "not_you_turn": {
+                    "title": "Du bist nicht dran",
+                    "description": "{{username}} ist dran!"
+                },
+                "call_not_null": {
+                    "title": "Achtung",
+                    "description": "Du kannst nur checken wenn noch nichts gecallt wurde."
+                },
+                "call_null": {
+                    "title": "Achtung",
+                    "description": "Du kannst nicht auf 0 callen."
+                },
+                "to_less_raise": {
+                    "title": "Achtung",
+                    "description": "Erhöre mindestens um {{money}}"
+                },
+                "not_created": {
+                    "title": "Achtung",
+                    "description": "Es ist noch kein Spiel erstellt!"
+                },
+                "not_started": {
+                    "title": "Achtung",
+                    "description": "Es ist noch kein Spiel gestartet!"
+                },
+                "already_created": {
+                    "title": "Achtung",
+                    "description": "Es wurde bereits ein Spiel erstellt."
+                },
+                "already_started": {
+                    "title": "Achtung",
+                    "description": "Es läuft bereits ein Spiel."
+                },
+                "missing_players": {
+                    "title": "Nicht genügent Spieler",
+                    "description": "mindestens 2 Spieler werden gebraucht!"
+                },
+                "already_joined": {
+                    "title": "Achtung",
+                    "description": "Du bist bereits beigetreten!"
+                }
+            }
+        },
+        "error": {
+            "color": "#FF0000",
+            "texts": {
+                "denied": {
+                    "title": "Verweigert",
+                    "description": "{{username}} du hast keine Rechte dafür."
                 }
             }
         }
