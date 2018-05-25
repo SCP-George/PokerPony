@@ -198,11 +198,6 @@ const methods = {
     check(msg) {
         let match = matches.find(channel => channel.id == msg.channel.id);
         if (!match) return sendMessage(msg, 'setup', 'not_started');
-        //@TODO
-        // const currentPlayer = match.players.indexOf(match.players
-        //     .find(
-        //     player => player.id === match.players[match.currentPlayer].obj.id
-        //   ));
 
         const currentPlayer = match.players[match.currentPlayer];
 
@@ -221,7 +216,7 @@ const methods = {
 function nextRound(match, msg) {
     if (!match.players.some(player => player.call !== match.call)) {
         match.round++;
-        match.currentPlayer = 0;
+        match.currentPlayer = 1;
         match.call = 0;
 
         match.players.forEach(player => player.call = 0);
