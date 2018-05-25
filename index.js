@@ -11,14 +11,37 @@ const matches = [];
 const highCards = ['jack', 'queen', 'king', 'ace'],
     cardTypes = ['diamonds', 'hearts', 'spades', 'clubs'];
 
-/** round:
- *   0 = wait for players (created)
- *   1 = round started (first deal round)
- *   2 = turn start
- *   3 = flop start
- *   4 = river start
- *   5 = end (calculation)
+/** match.round:
+ * null = not created
+ *    0 = wait for players (created)
+ *    1 = round started (first deal round)
+ *    2 = turn start
+ *    3 = flop start
+ *    4 = river start
+ *    5 = end (calculation)
  */
+
+ /** Player Object
+     obj: msg.author,
+     cash: match.cash,
+     state: 'join',
+     call: 0,
+     cards: []
+  */
+
+ /** Match Object
+     id: msg.channel.id,
+     owner: msg.author.id,
+     cash: args[0] || config.startAmount,
+     pot: 0,
+     call:  0,
+     round
+     subRound: false,
+     currentPlayer: 0,
+     cards: [],
+     players: [],
+     messages: []
+  */
 
 bot.login(token.myToken);
 
@@ -50,27 +73,7 @@ bot.on('message', msg => {
     methods.help(msg);
 });
 
-/** Player Object
-    obj: msg.author,
-    cash: match.cash,
-    state: 'join',
-    call: 0,
-    cards: []
- */
 
-/** Match Object
-    id: msg.channel.id,
-    owner: msg.author.id,
-    cash: args[0] || config.startAmount,
-    pot: 0,
-    call: 0,
-    round: 0,
-    subRound: false,
-    currentPlayer: 0,
-    cards: [],
-    players: [],
-    messages: []
- */
 
 //after game is finished or stopped, all its messages (which IDs will be saved) will be deleted (using methods.clear)
 const methods = {
@@ -94,7 +97,7 @@ const methods = {
             call: 0,
             round: 0,
             subRound: false,
-            currentPlayer: 0,
+            currentPlayer: 1,
             cards: [],
             players: [],
             messages: []
@@ -112,7 +115,7 @@ const methods = {
 
         return sendMessage(msg, 'info', 'created', msg.author.username);
     },
-    start(msg) { // start game
+    start(msg) {
         let match = matches.find(channel => channel.id == msg.channel.id);
         if (!match) return sendMessage(msg, 'setup', 'not_created');
         if (match.owner != msg.author.id) return sendMessage(msg, 'error', 'denied');
@@ -125,6 +128,19 @@ const methods = {
             player.cards = [getCheckedRandomCard(match), getCheckedRandomCard(match)]
             player.cards.forEach(card => player.obj.sendFile(getCardFile(card)));
         });
+        match.pot += config.blind*1.5;
+
+        match.players[match.currentPlayer].cash -= config.blind/2;
+        match.players[match.currentPlayer].call = config.blind/2;
+        sendMessage(msg, 'info', 'small_blind', match.players[match.currentPlayer].obj.username, null, config.blind/2, match.pot);
+        match.currentPlayer = (((match.currentPlayer + 1) % match.players.length) + match.players.length) % match.players.length;
+
+        match.call = config.blind;
+        match.players[match.currentPlayer].cash -= config.blind;
+        match.players[match.currentPlayer].call = config.blind;
+        sendMessage(msg, 'info', 'big_blind', match.players[match.currentPlayer].obj.username, null, config.blind, match.pot);
+        match.currentPlayer = (((match.currentPlayer + 1) % match.players.length) + match.players.length) % match.players.length;
+
 
         bot.user.setGame(i18n.games.his_turn.replace(/{{.*}}/, match.players[match.currentPlayer].obj.username));
         return sendMessage(msg, 'info', 'his_turn', match.players[match.currentPlayer].obj.username);
@@ -154,61 +170,58 @@ const methods = {
         let match = matches.find(channel => channel.id == msg.channel.id);
         if (!match) return sendMessage(msg, 'setup', 'not_started');
 
-        const currentPlayer = match.players[match.currentPlayer];
-        if (currentPlayer.obj.id !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn', currentPlayer.obj.username);
+        if (match.players[match.currentPlayer].obj.id !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn', match.players[match.currentPlayer].obj.username);
 
         const raise = parseInt(args[0]);
 
         if (!raise) return sendMessage(msg, 'setup', 'no_arg');
-        if (currentPlayer.cash < raise) return sendMessage(msg, 'setup', 'no_money', currentPlayer.cash);
+        if (match.players[match.currentPlayer].cash < raise) return sendMessage(msg, 'setup', 'no_money', match.players[match.currentPlayer].cash);
         if (raise < match.call * 2) return sendMessage(msg, 'setup', 'to_less_raise', match.call * 2);
         match.call = raise;
 
         match.pot += match.subRound ? match.call -
-            currentPlayer.call :
+            match.players[match.currentPlayer].call :
             match.call;
 
-        currentPlayer.cash += currentPlayer.call - match.call;
+        match.players[match.currentPlayer].cash += match.players[match.currentPlayer].call - match.call;
 
-        currentPlayer.call = match.call;
+        match.players[match.currentPlayer].call = match.call;
 
         nextRound(match, msg);
-        return sendMessage(msg, 'info', 'raise', currentPlayer.obj.username, null, match.call, match.pot);
+        return sendMessage(msg, 'info', 'raise', match.players[match.currentPlayer].obj.username, null, match.call, match.pot);
     },
     call(msg) {
         let match = matches.find(channel => channel.id == msg.channel.id);
         if (!match) return sendMessage(msg, 'setup', 'not_started');
-        const currentPlayer = match.players[match.currentPlayer];
 
-        if (currentPlayer.obj.id !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn', currentPlayer.obj.username);
+        if (match.players[match.currentPlayer].obj.id !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn', match.players[match.currentPlayer].obj.username);
         if (match.call === 0) return sendMessage(msg, 'setup', 'call_null');
-        if (currentPlayer.cash < match.call) return sendMessage(msg, 'setup', 'no_money', currentPlayer.cash);
+        if (match.players[match.currentPlayer].cash < match.call) return sendMessage(msg, 'setup', 'no_money', match.players[match.currentPlayer].cash);
 
         match.pot += match.subRound ? match.call -
-            currentPlayer.call :
+            match.players[match.currentPlayer].call :
             match.call;
 
-        currentPlayer.cash += currentPlayer.call - match.call;
+        match.players[match.currentPlayer].cash += match.players[match.currentPlayer].call - match.call;
 
-        currentPlayer.call = match.call;
+        match.players[match.currentPlayer].call = match.call;
 
         nextRound(match, msg);
-        return sendMessage(msg, 'info', 'call', currentPlayer.obj.username, null, match.call, match.pot);
+        //@TODO ???
+        return sendMessage(msg, 'info', 'call', match.players[match.currentPlayer].obj.username, null, match.call, match.pot);
     },
     check(msg) {
         let match = matches.find(channel => channel.id == msg.channel.id);
         if (!match) return sendMessage(msg, 'setup', 'not_started');
 
-        const currentPlayer = match.players[match.currentPlayer];
-
-        if (currentPlayer.obj.id !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn', currentPlayer.obj.username);
+        if (match.players[match.currentPlayer].obj.id !== msg.author.id) return sendMessage(msg, 'setup', 'not_you_turn', match.players[match.currentPlayer].obj.username);
 
         if (match.call !== 0) return sendMessage(msg, 'setup', 'call_not_null');
         match.call = 0;
-        currentPlayer.call = 0;
+        match.players[match.currentPlayer].call = 0;
 
         nextRound(match, msg);
-        return sendMessage(msg, 'info', 'check', currentPlayer.obj.username, null, match.call, match.pot);
+        return sendMessage(msg, 'info', 'check', match.players[match.currentPlayer].obj.username, null, match.call, match.pot);
     },
     help(msg) { sendMessage(msg, 'info', 'help', {}, true); }
 }
@@ -220,7 +233,6 @@ function nextRound(match, msg) {
         match.call = 0;
 
         match.players.forEach(player => player.call = 0);
-
         for (let i = 0; i < (match.round === 2 ? 3 : 1); i++) {
             const card = getCheckedRandomCard(match);
 
@@ -228,8 +240,8 @@ function nextRound(match, msg) {
 
             msg.channel.sendFile(getCardFile(card));
         }
-
-        return sendMessage(msg, 'info', 'his_turn', match.players[match.currentPlayer].obj.username);
+        sendMessage(msg, 'info', 'his_turn', match.players[match.currentPlayer].obj.username);
+        return match.cards;
     }
 
     match.currentPlayer++;
@@ -289,18 +301,15 @@ function getCardFile(card) {
 }
 
 function sendMessage(msg, type, tag, data, author, up, pot) {
+
     const embed = new Discord.RichEmbed();
 
     const color = i18n.messages[type].color;
     const text = i18n.messages[type].texts[tag];
 
-
-    log(`bot(0): ${text.title}, ${text.description}`);
     const title = text.title.replace(/{{.*}}/, data || '');
     if (!title) return;
-    const description = up && pot ? text.description.replace('{{pot}}', pot || '')
-        .replace('{{up}}', up || '') : text.description.replace(/{{.*}}/, data || '');
-
+    const description = text.description.replace('{{pot}}', pot || '').replace('{{up}}', up || '').replace('{{username}}', data || '').replace('{{money}}', data || '');
     log(title, description);
     embed.setTitle(title);
     embed.setDescription(description);

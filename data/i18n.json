@@ -27,6 +27,14 @@
                     "title": "Fold von {{username}}",
                     "description": " "
                 },
+                "small_blind": {
+                    "title": "Small Blind von {{username}}",
+                    "description": "+{{up}} ({{pot}})"
+                },
+                "big_blind": {
+                    "title": "Big Blind von {{username}}",
+                    "description": "+{{up}} ({{pot}})"
+                },
                 "created": {
                     "title": "Spiel von {{username}} erstellt",
                     "description": "tritt mit \"join\" bei!"
